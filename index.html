@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ESA Puppy Scoring Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+            background-color: #f5f5f5;
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .save-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .save-indicator.show {
+            opacity: 1;
+        }
+        
+        .instructions {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .instructions h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+        
+        .instructions p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .puppy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 100px;
+        }
+        
+        @media (max-width: 768px) {
+            .puppy-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+        
+        .puppy-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .puppy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .puppy-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .puppy-breed {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 3px;
+        }
+        
+        .puppy-price {
+            font-size: 18px;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .puppy-details {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .key-traits {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .key-traits h4 {
+            margin: 0 0 5px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+        
+        .key-traits p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .scoring-section {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 8px;
+        }
+        
+        .scoring-section h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        .score-slider {
+            width: 100%;
+            height: 40px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        .score-slider::-webkit-slider-track {
+            background: #ddd;
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .score-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            background: #1976d2;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .score-slider::-moz-range-track {
+            background: #ddd;
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .score-slider::-moz-range-thumb {
+            width: 30px;
+            height: 30px;
+            background: #1976d2;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .score-display {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1976d2;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .notes-section {
+            margin-top: 15px;
+        }
+        
+        .notes-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }
+        
+        .notes-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        
+        .link-button {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .export-section {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .export-button {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            background-color: #27ae60;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        
+        .export-button:active {
+            background-color: #229954;
+            transform: scale(0.98);
+        }
+        
+        .reset-button {
+            background-color: #e74c3c;
+        }
+        
+        .reset-button:active {
+            background-color: #c0392b;
+        }
+        
+        .sort-section {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .sort-button {
+            padding: 8px 16px;
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            touch-action: manipulation;
+        }
+        
+        .sort-button.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .puppy-name {
+                font-size: 18px;
+            }
+            
+            .puppy-price {
+                font-size: 16px;
+            }
+            
+            .export-button {
+                font-size: 12px;
+                padding: 10px 15px;
+            }
+        }
+        
+        @media print {
+            .export-section, .sort-section, .scoring-section, .notes-section, .save-indicator {
+                display: none !important;
+            }
+            .puppy-card {
+                break-inside: avoid;
+                margin-bottom: 20px;
+            }
+            body {
+                background: white;
+            }
+        }
+        
+        .summary-only {
+            display: none;
+        }
+        
+        @media print {
+            .summary-only {
+                display: block !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 20px;
+                z-index: 9999;
+            }
+            .puppy-grid, h1, .instructions {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="save-indicator" id="saveIndicator">✓ Saved</div>
+    
+    <h1>🐕 ESA Puppy Scoring Tool</h1>
+    
+    <div class="instructions">
+        <h2>Instructions for Scoring</h2>
+        <p>Rate each puppy from 0-10 based on how well they match what you're looking for.</p>
+        <p>Your scores and notes are automatically saved!</p>
+    </div>
+    
+    <div class="sort-section">
+        <button class="sort-button active" onclick="sortPuppies('default')">Default</button>
+        <button class="sort-button" onclick="sortPuppies('score')">By Score</button>
+        <button class="sort-button" onclick="sortPuppies('price')">By Price</button>
+        <button class="sort-button" onclick="sortPuppies('size')">By Size</button>
+    </div>
+    
+    <div class="puppy-grid" id="puppyGrid">
+        <!-- Puppy cards will be inserted here -->
+    </div>
+    
+    <div class="export-section">
+        <button class="export-button" onclick="exportToPDF()">📄 Export PDF</button>
+        <button class="export-button" onclick="exportToCSV()">📊 Export Excel</button>
+        <button class="export-button reset-button" onclick="resetScores()">🔄 Reset All</button>
+    </div>
+    
+    <div class="summary-only" id="printSummary"></div>
+
+    <script>
+        // Puppy data
+        const puppies = [
+            {
+                name: "Amara",
+                breed: "Bernedoodle",
+                price: 2600,
+                weight: "71-81 lbs",
+                location: "Easley, SC",
+                keyTraits: "Calm, affectionate, loves to relax by your side while you read or watch TV",
+                link: "https://www.crockettdoodles.com/puppy/available/14e7tog-bernedoodle-amara/"
+            },
+            {
+                name: "Jasmine",
+                breed: "Aussiedoodle",
+                price: 2200,
+                weight: "18-30 lbs",
+                location: "Greer, SC",
+                keyTraits: "Gentle, calm demeanor, sits quietly by your side to soak up love",
+                link: "https://www.crockettdoodles.com/puppy/available/14ga9s0-aussiedoodle-jasmine/"
+            },
+            {
+                name: "Bernadette",
+                breed: "Bernedoodle",
+                price: 2700,
+                weight: "73-93 lbs",
+                location: "Greenville, SC",
+                keyTraits: "Gentle, careful and kind, loves curling up beside you for quiet snuggles",
+                link: "https://www.crockettdoodles.com/puppy/available/14ehnnk-bernedoodle-bernadette/"
+            },
+            {
+                name: "Blanche",
+                breed: "Bernedoodle",
+                price: 2700,
+                weight: "73-93 lbs",
+                location: "Greenville, SC",
+                keyTraits: "Calm presence, loyal, stays close to favorite humans",
+                link: "https://www.crockettdoodles.com/puppy/available/14ekgsg-bernedoodle-blanche/"
+            },
+            {
+                name: "Lacey",
+                breed: "Saint Berdoodle",
+                price: 2300,
+                weight: "16-30 lbs",
+                location: "Greenville, SC",
+                keyTraits: "Gentle soul, calm demeanor, thoughtful, loves napping by your side",
+                link: "https://www.crockettdoodles.com/puppy/available/14hj7y8-saint-berdoodle-lacey/"
+            },
+            {
+                name: "Cindy",
+                breed: "Bernedoodle",
+                price: 2800,
+                weight: "59-79 lbs",
+                location: "Greer, SC",
+                keyTraits: "Gentle, loves to sit quietly by your side and soak up all the love",
+                link: "https://www.crockettdoodles.com/puppy/available/14h6ku8-bernedoodle-cindy/"
+            },
+            {
+                name: "Kimber",
+                breed: "Golden Sheepadoodle",
+                price: "Contact for price",
+                weight: "22-38 lbs",
+                location: "Taylors, SC",
+                keyTraits: "Pre-trained, gentle, peaceful vibe, never want to put down",
+                link: "https://www.crockettdoodles.com/puppy/available/14cxgxs-sheepadoodle-kimber/"
+            },
+            {
+                name: "Zenith",
+                breed: "Golden Sheepadoodle",
+                price: "Contact for price",
+                weight: "22-38 lbs",
+                location: "Taylor's, SC",
+                keyTraits: "Pre-trained, laid-back, quiet personality, tunes into humans",
+                link: "https://www.crockettdoodles.com/puppy/available/14cyvi8-sheepadoodle-zenith/"
+            },
+            {
+                name: "Pocahontas",
+                breed: "Swiss Doodle",
+                price: 2000,
+                weight: "25-40 lbs",
+                location: "Travelers Rest, SC",
+                keyTraits: "Calm and gentle pup, sweet and playful companion",
+                link: "https://www.crockettdoodles.com/puppy/available/14d5wcg-swiss-doodle-pocahontas/"
+            },
+            {
+                name: "Hope",
+                breed: "Bernedoodle",
+                price: 2800,
+                weight: "67-87 lbs",
+                location: "Gray Court, SC",
+                keyTraits: "Gentle, devoted, spreading good vibes, shows love every day",
+                link: "https://www.crockettdoodles.com/puppy/available/14fi6f4-bernedoodle-hope/"
+            },
+            {
+                name: "Gracie",
+                breed: "Sheepadoodle",
+                price: 2000,
+                weight: "12-24 lbs",
+                location: "Greenville, SC",
+                keyTraits: "Sweet loving nature, obedient, devoted, you're her whole world",
+                link: "https://www.crockettdoodles.com/puppy/available/14fb5kw-sheepadoodle-gracie/"
+            },
+            {
+                name: "Aubrie",
+                breed: "Bernedoodle",
+                price: 2700,
+                weight: "71-81 lbs",
+                location: "Easley, SC",
+                keyTraits: "Loyal, sticks by your side like your shadow, playful",
+                link: "https://www.crockettdoodles.com/puppy/available/14e988w-bernedoodle-aubrie/"
+            }
+        ];
+        
+        // Initialize or load saved data
+        function loadSavedData() {
+            const saved = localStorage.getItem('puppyScores');
+            if (saved) {
+                const savedData = JSON.parse(saved);
+                puppies.forEach((puppy, index) => {
+                    puppy.id = index;
+                    const savedPuppy = savedData.find(p => p.name === puppy.name);
+                    if (savedPuppy) {
+                        puppy.score = savedPuppy.score || 5;
+                        puppy.notes = savedPuppy.notes || "";
+                    } else {
+                        puppy.score = 5;
+                        puppy.notes = "";
+                    }
+                });
+            } else {
+                puppies.forEach((puppy, index) => {
+                    puppy.id = index;
+                    puppy.score = 5;
+                    puppy.notes = "";
+                });
+            }
+        }
+        
+        // Save data
+        function saveData() {
+            const dataToSave = puppies.map(p => ({
+                name: p.name,
+                score: p.score,
+                notes: p.notes
+            }));
+            localStorage.setItem('puppyScores', JSON.stringify(dataToSave));
+            
+            // Show save indicator
+            const indicator = document.getElementById('saveIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 1500);
+        }
+        
+        // Render puppy cards
+        function renderPuppies() {
+            const grid = document.getElementById('puppyGrid');
+            grid.innerHTML = '';
+            
+            puppies.forEach(puppy => {
+                const card = document.createElement('div');
+                card.className = 'puppy-card';
+                card.innerHTML = `
+                    <div class="puppy-header">
+                        <div>
+                            <h3 class="puppy-name">${puppy.name}</h3>
+                            <div class="puppy-breed">${puppy.breed}</div>
+                        </div>
+                        <div class="puppy-price">${typeof puppy.price === 'number' ? '$' + puppy.price : puppy.price}</div>
+                    </div>
+                    
+                    <div class="puppy-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Weight:</span>
+                            <span>${puppy.weight}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Location:</span>
+                            <span>${puppy.location}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="key-traits">
+                        <h4>Key Traits:</h4>
+                        <p>${puppy.keyTraits}</p>
+                    </div>
+                    
+                    <a href="${puppy.link}" target="_blank" class="link-button">View Full Profile</a>
+                    
+                    <div class="scoring-section">
+                        <h4>Your Score:</h4>
+                        <input type="range" class="score-slider" min="0" max="10" value="${puppy.score}" 
+                               oninput="updateScore(${puppy.id}, this.value)">
+                        <div class="score-display" id="score-${puppy.id}">${puppy.score}</div>
+                    </div>
+                    
+                    <div class="notes-section">
+                        <h4>Your Notes:</h4>
+                        <textarea class="notes-input" placeholder="What do you like or dislike about this puppy?"
+                                  onblur="updateNotes(${puppy.id}, this.value)">${puppy.notes}</textarea>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        // Update score
+        function updateScore(id, score) {
+            puppies[id].score = parseInt(score);
+            document.getElementById(`score-${id}`).textContent = score;
+            saveData();
+        }
+        
+        // Update notes
+        function updateNotes(id, notes) {
+            puppies[id].notes = notes;
+            saveData();
+        }
+        
+        // Reset all scores
+        function resetScores() {
+            if (confirm('Are you sure you want to reset all scores and notes?')) {
+                puppies.forEach(puppy => {
+                    puppy.score = 5;
+                    puppy.notes = "";
+                });
+                saveData();
+                renderPuppies();
+            }
+        }
+        
+        // Sort puppies
+        function sortPuppies(method) {
+            document.querySelectorAll('.sort-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            switch(method) {
+                case 'score':
+                    puppies.sort((a, b) => b.score - a.score);
+                    break;
+                case 'price':
+                    puppies.sort((a, b) => {
+                        const priceA = typeof a.price === 'number' ? a.price : 999999;
+                        const priceB = typeof b.price === 'number' ? b.price : 999999;
+                        return priceA - priceB;
+                    });
+                    break;
+                case 'size':
+                    puppies.sort((a, b) => {
+                        const sizeA = parseInt(a.weight.split('-')[0]);
+                        const sizeB = parseInt(b.weight.split('-')[0]);
+                        return sizeA - sizeB;
+                    });
+                    break;
+                default:
+                    puppies.sort((a, b) => a.id - b.id);
+            }
+            renderPuppies();
+        }
+        
+        // Export to PDF (print)
+        function exportToPDF() {
+            const summary = document.getElementById('printSummary');
+            const sortedPuppies = [...puppies].sort((a, b) => b.score - a.score);
+            
+            let html = `
+                <h1>My ESA Puppy Rankings</h1>
+                <p style="text-align: center; color: #666;">Generated on ${new Date().toLocaleDateString()}</p>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="background-color: #f4f4f4;">
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Rank</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Puppy</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Score</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Details</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            sortedPuppies.forEach((puppy, index) => {
+                const price = typeof puppy.price === 'number' ? '$' + puppy.price : puppy.price;
+                html += `
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">#${index + 1}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            <strong>${puppy.name}</strong><br>
+                            <small>${puppy.breed}</small>
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-size: 20px; font-weight: bold;">
+                            ${puppy.score}/10
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            <strong>Price:</strong> ${price}<br>
+                            <strong>Weight:</strong> ${puppy.weight}<br>
+                            <strong>Location:</strong> ${puppy.location}<br>
+                            <strong>Key Traits:</strong> ${puppy.keyTraits}
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${puppy.notes || 'No notes'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+                <div style="margin-top: 30px;">
+                    <h3>Top 3 Choices:</h3>
+                    <ol>
+            `;
+            
+            sortedPuppies.slice(0, 3).forEach(puppy => {
+                html += `<li><strong>${puppy.name}</strong> (${puppy.breed}) - Score: ${puppy.score}/10<br>
+                         Link: ${puppy.link}</li>`;
+            });
+            
+            html += `
+                    </ol>
+                </div>
+            `;
+            
+            summary.innerHTML = html;
+            window.print();
+            setTimeout(() => { summary.innerHTML = ''; }, 100);
+        }
+        
+        // Export to CSV
+        function exportToCSV() {
+            const sortedPuppies = [...puppies].sort((a, b) => b.score - a.score);
+            
+            let csv = 'Rank,Name,Breed,Score,Price,Weight,Location,Key Traits,Notes,Link\n';
+            
+            sortedPuppies.forEach((puppy, index) => {
+                const price = typeof puppy.price === 'number' ? puppy.price : '"' + puppy.price + '"';
+                const notes = puppy.notes ? '"' + puppy.notes.replace(/"/g, '""') + '"' : '';
+                const traits = '"' + puppy.keyTraits.replace(/"/g, '""') + '"';
+                
+                csv += `${index + 1},${puppy.name},${puppy.breed},${puppy.score},${price},"${puppy.weight}","${puppy.location}",${traits},${notes},"${puppy.link}"\n`;
+            });
+            
+            // Create download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'puppy_rankings_' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Initialize
+        loadSavedData();
+        renderPuppies();
+    </script>
+</body>
+</html>
