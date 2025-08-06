@@ -44,6 +44,22 @@
             opacity: 1;
         }
         
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
         .instructions {
             background-color: #e8f4f8;
             padding: 15px;
@@ -443,32 +459,51 @@
     
     <h1>🐕 ESA Puppy Scoring Tool</h1>
     
-    <div class="instructions">
-        <h2>Find Your Perfect Emotional Support Dog</h2>
-        <p>Dogs are pre-scored by ESA qualities. Rate each based on your personal connection!</p>
-        <p>⭐⭐⭐ = Exceptional ESA (10-12) | ⭐⭐ = Strong ESA (7-9) | ⭐ = Potential ESA (4-6)</p>
+    <div id="loadingIndicator" class="loading">
+        Loading puppy data...
     </div>
     
-    <div class="sort-section">
-        <button class="sort-button active" onclick="sortPuppies('esa')">By ESA Score</button>
-        <button class="sort-button" onclick="sortPuppies('score')">By Your Score</button>
-        <button class="sort-button" onclick="sortPuppies('price')">By Price</button>
-        <button class="sort-button" onclick="sortPuppies('size')">By Size</button>
+    <div id="errorMessage" class="error" style="display: none;">
+        <h3>Error Loading Data</h3>
+        <p>Could not load puppy data from JSON file. Please check:</p>
+        <ul style="text-align: left; display: inline-block;">
+            <li>The JSON file exists and is accessible</li>
+            <li>The file format is valid JSON</li>
+            <li>Your browser allows loading local files (try using a web server)</li>
+        </ul>
+        <button onclick="retryLoad()" style="margin-top: 10px; padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">Retry</button>
     </div>
     
-    <div class="puppy-grid" id="puppyGrid">
-        <!-- Puppy cards will be inserted here -->
-    </div>
-    
-    <div class="export-section">
-        <button class="export-button" onclick="exportToPDF()">📄 Export PDF</button>
-        <button class="export-button" onclick="exportToCSV()">📊 Export Excel</button>
-        <button class="export-button reset-button" onclick="resetScores()">🔄 Reset All</button>
+    <div id="mainContent" style="display: none;">
+        <div class="instructions">
+            <h2>Find Your Perfect Emotional Support Dog</h2>
+            <p>Dogs are pre-scored by ESA qualities. Rate each based on your personal connection!</p>
+            <p>⭐⭐⭐ = Exceptional ESA (10-12) | ⭐⭐ = Strong ESA (7-9) | ⭐ = Potential ESA (4-6)</p>
+        </div>
+        
+        <div class="sort-section">
+            <button class="sort-button active" onclick="sortPuppies('esa')">By ESA Score</button>
+            <button class="sort-button" onclick="sortPuppies('score')">By Your Score</button>
+            <button class="sort-button" onclick="sortPuppies('price')">By Price</button>
+            <button class="sort-button" onclick="sortPuppies('size')">By Size</button>
+        </div>
+        
+        <div class="puppy-grid" id="puppyGrid">
+            <!-- Puppy cards will be inserted here -->
+        </div>
+        
+        <div class="export-section">
+            <button class="export-button" onclick="exportToPDF()">📄 Export PDF</button>
+            <button class="export-button" onclick="exportToCSV()">📊 Export Excel</button>
+            <button class="export-button reset-button" onclick="resetScores()">🔄 Reset All</button>
+        </div>
     </div>
     
     <div class="summary-only" id="printSummary"></div>
 
     <script>
+        let puppies = [];
+        
         // Helper function to translate C2C to human readable
         function getESAQualities(c2cPattern) {
             const qualities = [];
@@ -483,44 +518,6 @@
             return qualities;
         }
         
-        // Extract actual meaningful evidence phrases
-        function extractEvidence(name, keyTraits, c2cPattern) {
-            // Manual evidence mapping based on what actually made them score high
-            const evidenceMap = {
-                "Hope": '"brighten your day", "devoted", "shows love every single day", "spreading good vibes", "gentle cuddle buddy"',
-                "Gabby": '"loyal", "always by your side", "ready to brighten your day", "cuddles and belly rubs", "affectionate"',
-                "Lacey": '"gentle soul", "calm demeanor", "loyal heart", "by your side", "thoughtful personality", "curling up"',
-                "Zenith": '"tunes into humans", "dialed in for connection", "quiet personality", "loves being with people", "laid-back", "pre-trained"',
-                "Bernadette": '"gentle, careful and kind", "curling up beside you", "quiet snuggles"',
-                "Blanche": '"calm presence", "loyal", "staying close to favorite humans"',
-                "Kimber": '"never want to put down", "peaceful vibe", "adore cuddling", "gentle", "pre-trained"',
-                "Jasmine": '"sit quietly by your side", "soak up love", "calm demeanor", "gentle"',
-                "Sundae": '"always ready to brighten your day", "snuggles will warm your heart", "sweet"',
-                "Gracie": '"devoted", "you\'re her whole world", "sweet loving nature"',
-                "Amara": '"belly rubs and snuggles", "calm", "relax by your side", "affectionate"',
-                "Cindy": '"sit quietly by your side", "soak up all the love", "gentle"',
-                "Audrey": '"snuggle up for quiet moment", "affectionate", "graceful"',
-                "Beatrice": '"calm", "happy to sit by your side", "intelligent"',
-                "Aria": '"cuddle bug", "cozy nap by your side", "sweet"',
-                "Astra": '"gentle", "perfect cuddle buddy after long day"',
-                "Aubrie": '"loyal", "sticking by your side like shadow", "devoted"',
-                "Tikka": '"curling up in lap for snuggles", "fits perfectly into your heart", "pre-trained"',
-                "Pocahontas": '"calm and gentle pup"'
-            };
-            
-            return evidenceMap[name] || '"See full description"';
-        }
-        
-        // Get sufficiency indicator
-        function getSufficiency(traits) {
-            const count = (traits.match(/\[.*?\]/g) || []).length;
-            if (count === 0) return '◯ Insufficient data';
-            if (count <= 2) return '◐ Minimal (1-2 traits)';
-            if (count <= 4) return '◑ Moderate (3-4 traits)';
-            if (count <= 6) return '◒ Good (5-6 traits)';
-            return '◓ Rich (7+ traits)';
-        }
-        
         // Get ESA badge info
         function getESABadge(score) {
             if (score >= 10) return { class: 'exceptional', stars: '⭐⭐⭐' };
@@ -529,298 +526,113 @@
             return null;
         }
         
-        // Get special badges
-        function getSpecialBadges(name, keyTraits, esaScore) {
+        // Get special badges based on notes or other indicators
+        function getSpecialBadges(puppy) {
             const badges = [];
-            if (['Hope', 'Gabby', 'Lacey'].includes(name)) badges.push('🏆');
-            if (keyTraits.toLowerCase().includes('whole world')) badges.push('💛');
-            if (keyTraits.toLowerCase().includes('pre-trained') || keyTraits.toLowerCase().includes('trained')) badges.push('🎓');
-            if (name === 'Gabby') badges.push('✨');
+            if (puppy.notes && puppy.notes.includes('BUDGET FRIENDLY')) badges.push('🔥');
+            if (puppy.notes && puppy.notes.includes('IDEAL SIZE')) badges.push('💎');
+            if (puppy.esaScore >= 12) badges.push('🏆');
+            if (puppy.keyTraits && puppy.keyTraits.toLowerCase().includes('trained')) badges.push('🎓');
             return badges;
         }
-
-        // Puppy data - only including dogs with ESA score 4+
-        const puppies = [
-            {
-                name: "Hope",
-                breed: "Bernedoodle",
-                price: 2800,
-                weight: "67-87 lbs",
-                location: "Gray Court, SC",
-                keyTraits: "Brighten your day, always wagging, spreading good vibes. Gentle cuddle buddy. Devoted, shows love every single day.",
-                c2cPattern: "[⟡][⟳][※][∰]",
-                c2cMeaning: "Active daily emotional support with deep bond",
-                link: "https://www.bestbernedoodles.com/bernedoodle-puppies/",
-                esaScore: 12,
-                website: "BestBernedoodles"
-            },
-            {
-                name: "Gabby",
-                breed: "Sheepadoodle",
-                price: 2100,
-                weight: "12-24 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Affectionate, always looking for cuddles and belly rubs. Loyal, always by your side, ready to brighten your day.",
-                c2cPattern: "[⟳][※][→][⟡][∰]",
-                c2cMeaning: "Complete ESA package with active therapy",
-                link: "https://www.crockettdoodles.com/puppy/available/14fck5c-sheepadoodle-gabby/",
-                esaScore: 12,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Lacey",
-                breed: "Saint Berdoodle",
-                price: 2300,
-                weight: "16-30 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Gentle soul, calm demeanor, thoughtful personality. Loyal heart. Loves curling up for nap by your side.",
-                c2cPattern: "[※][∰][⊙][→]",
-                c2cMeaning: "Inherently calm with physical closeness",
-                link: "https://www.crockettdoodles.com/puppy/available/14hj7y8-saint-berdoodle-lacey/",
-                esaScore: 10,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Zenith",
-                breed: "Golden Sheepadoodle",
-                price: "Contact for price",
-                weight: "22-38 lbs",
-                location: "Taylor's, SC",
-                keyTraits: "Pre-trained, laid-back, quiet personality, tunes into humans. Dialed in for connection, soulful eyes, loves being with people.",
-                c2cPattern: "[※][⊙][→]",
-                c2cMeaning: "Human-attuned with training bonus",
-                link: "https://www.crockettdoodles.com/puppy/available/14cyvi8-sheepadoodle-zenith/",
-                esaScore: 10,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Bernadette",
-                breed: "Bernedoodle",
-                price: 2700,
-                weight: "73-93 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Gentle, careful and kind, loves curling up beside you for quiet snuggles",
-                c2cPattern: "[∰][→][⊙]",
-                c2cMeaning: "Strong physical comfort with calm presence",
-                link: "https://www.crockettdoodles.com/puppy/available/14ehnnk-bernedoodle-bernadette/",
-                esaScore: 9,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Blanche",
-                breed: "Bernedoodle",
-                price: 2700,
-                weight: "73-93 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Calm presence, loyal, stays close to favorite humans",
-                c2cPattern: "[※][⊙][→]",
-                c2cMeaning: "Excellent shadow behavior with inherent calm",
-                link: "https://www.crockettdoodles.com/puppy/available/14ekgsg-bernedoodle-blanche/",
-                esaScore: 9,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Kimber",
-                breed: "Golden Sheepadoodle",
-                price: "Contact for price",
-                weight: "22-38 lbs",
-                location: "Taylors, SC",
-                keyTraits: "Pre-trained, gentle, peaceful vibe, never want to put down",
-                c2cPattern: "[∰∰][⊙]",
-                c2cMeaning: "Extreme physical bonding with training",
-                link: "https://www.crockettdoodles.com/puppy/available/14cxgxs-sheepadoodle-kimber/",
-                esaScore: 9,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Jasmine",
-                breed: "Aussiedoodle",
-                price: 2200,
-                weight: "18-30 lbs",
-                location: "Greer, SC",
-                keyTraits: "Gentle, always ready to sit quietly by your side and soak up love. Calm demeanor. Intelligent, quick to learn. Playful when time for ball.",
-                c2cPattern: "[∰][⊙][→][◊]",
-                c2cMeaning: "Rare calm Aussiedoodle with shadow behavior",
-                link: "https://www.crockettdoodles.com/puppy/available/14ga9s0-aussiedoodle-jasmine/",
-                esaScore: 8,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Sundae",
-                breed: "Bernedoodle",
-                price: 2500,
-                weight: "68-88 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Sweet little Bernedoodle girl who's just as delightful as my name! Playful antics will have you smiling, and my snuggles will warm your heart. Always ready to brighten your day.",
-                c2cPattern: "[⟳][⟡][∰]",
-                c2cMeaning: "Active therapy trait like Hope",
-                link: "https://www.bestbernedoodles.com/bernedoodle-puppies/",
-                esaScore: 8,
-                website: "BestBernedoodles"
-            },
-            {
-                name: "Gracie",
-                breed: "Sheepadoodle",
-                price: 2000,
-                weight: "12-24 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Sweet loving nature, obedient, devoted, you're her whole world",
-                c2cPattern: "[※※]",
-                c2cMeaning: "Extreme devotion - rare intensity",
-                link: "https://www.crockettdoodles.com/puppy/available/14fb5kw-sheepadoodle-gracie/",
-                esaScore: 8,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Amara",
-                breed: "Bernedoodle",
-                price: 2600,
-                weight: "71-81 lbs",
-                location: "Easley, SC",
-                keyTraits: "Affectionate, belly rubs and snuggles. Calm, relax by your side while you read or watch TV. Spirited when play time.",
-                c2cPattern: "[∰∰][⊙][→][◊][⚡]",
-                c2cMeaning: "Physical comfort & calm presence but conditional energy",
-                link: "https://www.crockettdoodles.com/puppy/available/14e7tog-bernedoodle-amara/",
-                esaScore: 5,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Cindy",
-                breed: "Bernedoodle",
-                price: 2800,
-                weight: "59-79 lbs",
-                location: "Greer, SC",
-                keyTraits: "Gentle, loves to sit quietly by your side and soak up all the love. But don't think I'm shy—I'm also outgoing, always wagging my tail. When it's time to play, I'm spirited.",
-                c2cPattern: "[∰][→][⚡][◊]",
-                c2cMeaning: "Good shadow behavior but energy concerns",
-                link: "https://www.crockettdoodles.com/puppy/available/14h6ku8-bernedoodle-cindy/",
-                esaScore: 5,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Audrey",
-                breed: "Aussiedoodle",
-                price: 2200,
-                weight: "16-30 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Graceful, affectionate, and intelligent, always eager to learn new tricks or snuggle up for a quiet moment.",
-                c2cPattern: "[∰][⊙]",
-                c2cMeaning: "Another rare calm Aussiedoodle",
-                link: "https://www.crockettdoodles.com/puppy/available/14afklc-aussiedoodle-audrey/",
-                esaScore: 5,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Beatrice",
-                breed: "Bernedoodle",
-                price: 2600,
-                weight: "73-93 lbs",
-                location: "Greenville, SC",
-                keyTraits: "Intelligent, picking up new tricks quickly. Calm, happy to sit by your side. When it's time to play, I'm spirited.",
-                c2cPattern: "[⊙][→][⚡][◊]",
-                c2cMeaning: "Calm shadow dog but conditional energy",
-                link: "https://www.crockettdoodles.com/puppy/available/14ej280-bernedoodle-beatrice/",
-                esaScore: 6,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Aria",
-                breed: "Bernedoodle",
-                price: 2700,
-                weight: "71-81 lbs",
-                location: "Easley, SC",
-                keyTraits: "Sweet Bernedoodle girl who loves bringing smiles! Playful, smart, and a total cuddle bug, always ready for fun or cozy nap by your side.",
-                c2cPattern: "[∰][→][⚡]",
-                c2cMeaning: "Cuddle bug with shadow behavior but playful",
-                link: "https://www.crockettdoodles.com/puppy/available/14e50jk-bernedoodle-aria/",
-                esaScore: 6,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Astra",
-                breed: "Bernedoodle",
-                price: 2500,
-                weight: "71-81 lbs",
-                location: "Easley, SC",
-                keyTraits: "Adventurous, always ready to explore. Gentle, making me the perfect cuddle buddy after a long day of play.",
-                c2cPattern: "[∰][◊]",
-                c2cMeaning: "Conditional cuddles after activity",
-                link: "https://www.crockettdoodles.com/puppy/available/14e6f40-bernedoodle-astra/",
-                esaScore: 4,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Aubrie",
-                breed: "Bernedoodle",
-                price: 2700,
-                weight: "71-81 lbs",
-                location: "Easley, SC",
-                keyTraits: "Bouncy, wagging tail never stops. Playful but loyal, sticking by your side like shadow.",
-                c2cPattern: "[※][→][◊][⚡]",
-                c2cMeaning: "True shadow dog with devoted bond but high energy",
-                link: "https://www.crockettdoodles.com/puppy/available/14e988w-bernedoodle-aubrie/",
-                esaScore: 4,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Tikka",
-                breed: "Golden Sheepadoodle",
-                price: "Contact for price",
-                weight: "22-38 lbs",
-                location: "Taylor's, SC",
-                keyTraits: "Pre-trained. Spunky, full of sass, but also curling up in lap for snuggles. Fits perfectly into your heart.",
-                c2cPattern: "[※][∰][⚡]",
-                c2cMeaning: "Heart connection with cuddles but spunky",
-                link: "https://www.crockettdoodles.com/puppy/available/14d0a2o-sheepadoodle-tikka/",
-                esaScore: 4,
-                website: "Crockett Doodles"
-            },
-            {
-                name: "Pocahontas",
-                breed: "Swiss Doodle",
-                price: 2000,
-                weight: "25-40 lbs",
-                location: "Travelers Rest, SC",
-                keyTraits: "Calm and gentle pup, but loves when it's playtime—I'll happily chase a ball.",
-                c2cPattern: "[⊙][◊]",
-                c2cMeaning: "Calm but conditional on activity level",
-                link: "https://www.crockettdoodles.com/puppy/available/14d5wcg-swiss-doodle-pocahontas/",
-                esaScore: 4,
-                website: "Crockett Doodles"
-            }
-        ];
         
-        // Initialize or load saved data
+        // Extract weight range for sorting
+        function getWeightValue(weightString) {
+            const match = weightString.match(/(\d+)-(\d+)/);
+            if (match) {
+                return parseInt(match[1]); // Use minimum weight for sorting
+            }
+            return 0;
+        }
+        
+        // Load puppy data from JSON
+        async function loadPuppyData() {
+            try {
+                // Try multiple possible JSON file locations
+                const possiblePaths = [
+                    './puppies.json',
+                    './data/puppies.json',
+                    '../puppies.json',
+                    'puppies.json'
+                ];
+                
+                let response = null;
+                let lastError = null;
+                
+                for (const path of possiblePaths) {
+                    try {
+                        response = await fetch(path);
+                        if (response.ok) break;
+                    } catch (error) {
+                        lastError = error;
+                        continue;
+                    }
+                }
+                
+                if (!response || !response.ok) {
+                    throw new Error(`Failed to load JSON file. Last error: ${lastError?.message || 'File not found'}`);
+                }
+                
+                const data = await response.json();
+                
+                // Initialize puppy data with defaults
+                puppies = data.map((puppy, index) => ({
+                    ...puppy,
+                    id: index,
+                    score: 5, // Default user score
+                    userNotes: "" // User's personal notes
+                }));
+                
+                // Load saved user data
+                loadSavedData();
+                
+                // Show main content and hide loading
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+                // Initial render
+                puppies.sort((a, b) => b.esaScore - a.esaScore);
+                renderPuppies();
+                
+            } catch (error) {
+                console.error('Error loading puppy data:', error);
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+        
+        // Retry loading data
+        function retryLoad() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            loadPuppyData();
+        }
+        
+        // Load saved user scores and notes
         function loadSavedData() {
             const saved = localStorage.getItem('puppyScores');
             if (saved) {
-                const savedData = JSON.parse(saved);
-                puppies.forEach((puppy, index) => {
-                    puppy.id = index;
-                    const savedPuppy = savedData.find(p => p.name === puppy.name);
-                    if (savedPuppy) {
-                        puppy.score = savedPuppy.score || 5;
-                        puppy.notes = savedPuppy.notes || "";
-                    } else {
-                        puppy.score = 5;
-                        puppy.notes = "";
-                    }
-                });
-            } else {
-                puppies.forEach((puppy, index) => {
-                    puppy.id = index;
-                    puppy.score = 5;
-                    puppy.notes = "";
-                });
+                try {
+                    const savedData = JSON.parse(saved);
+                    puppies.forEach(puppy => {
+                        const savedPuppy = savedData.find(p => p.name === puppy.name);
+                        if (savedPuppy) {
+                            puppy.score = savedPuppy.score || 5;
+                            puppy.userNotes = savedPuppy.userNotes || "";
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error loading saved data:', error);
+                }
             }
         }
         
-        // Save data
+        // Save user data
         function saveData() {
             const dataToSave = puppies.map(p => ({
                 name: p.name,
                 score: p.score,
-                notes: p.notes
+                userNotes: p.userNotes
             }));
             localStorage.setItem('puppyScores', JSON.stringify(dataToSave));
             
@@ -842,10 +654,8 @@
                 card.className = 'puppy-card';
                 
                 const badge = getESABadge(puppy.esaScore);
-                const specialBadges = getSpecialBadges(puppy.name, puppy.keyTraits, puppy.esaScore);
-                const esaQualities = getESAQualities(puppy.c2cPattern);
-                const evidence = extractEvidence(puppy.name, puppy.keyTraits, puppy.c2cPattern);
-                const sufficiency = getSufficiency(puppy.c2cPattern);
+                const specialBadges = getSpecialBadges(puppy);
+                const esaQualities = getESAQualities(puppy.c2cPattern || '');
                 
                 card.innerHTML = `
                     <div class="puppy-header">
@@ -855,7 +665,7 @@
                             ${specialBadges.length > 0 ? `<div class="special-badges">${specialBadges.map(b => `<span class="badge">${b}</span>`).join('')}</div>` : ''}
                         </div>
                         ${badge ? `<div class="esa-score-badge ${badge.class}">ESA: ${puppy.esaScore} ${badge.stars}</div>` : ''}
-                        <div class="puppy-price">${typeof puppy.price === 'number' ? '$' + puppy.price : puppy.price}</div>
+                        <div class="puppy-price">$${puppy.price}</div>
                     </div>
                     
                     <div class="puppy-details">
@@ -882,16 +692,18 @@
                     </div>
                     ` : ''}
                     
-                    ${evidence ? `
+                    ${puppy.keyTraits ? `
                     <div class="key-evidence">
-                        <h4>Key Evidence:</h4>
-                        <p>${evidence}</p>
+                        <h4>Key Traits:</h4>
+                        <p>${puppy.keyTraits}</p>
                     </div>
                     ` : ''}
                     
+                    ${puppy.notes ? `
                     <div class="analysis-quality">
-                        <strong>Analysis Quality:</strong> ${sufficiency}
+                        <strong>Special Notes:</strong> ${puppy.notes}
                     </div>
+                    ` : ''}
                     
                     <a href="${puppy.link}" target="_blank" class="link-button">View Full Profile</a>
                     
@@ -904,8 +716,8 @@
                     
                     <div class="notes-section">
                         <h4>Your Notes:</h4>
-                        <textarea class="notes-input" placeholder="What behaviors do you see? Did she show calm behavior? Any concerns?"
-                                  onblur="updateNotes(${puppy.id}, this.value)">${puppy.notes}</textarea>
+                        <textarea class="notes-input" placeholder="What behaviors do you see? Did they show calm behavior? Any concerns?"
+                                  onblur="updateNotes(${puppy.id}, this.value)">${puppy.userNotes}</textarea>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -921,7 +733,7 @@
         
         // Update notes
         function updateNotes(id, notes) {
-            puppies[id].notes = notes;
+            puppies[id].userNotes = notes;
             saveData();
         }
         
@@ -930,7 +742,7 @@
             if (confirm('Are you sure you want to reset all scores and notes?')) {
                 puppies.forEach(puppy => {
                     puppy.score = 5;
-                    puppy.notes = "";
+                    puppy.userNotes = "";
                 });
                 saveData();
                 renderPuppies();
@@ -950,18 +762,10 @@
                     puppies.sort((a, b) => b.score - a.score);
                     break;
                 case 'price':
-                    puppies.sort((a, b) => {
-                        const priceA = typeof a.price === 'number' ? a.price : 999999;
-                        const priceB = typeof b.price === 'number' ? b.price : 999999;
-                        return priceA - priceB;
-                    });
+                    puppies.sort((a, b) => a.price - b.price);
                     break;
                 case 'size':
-                    puppies.sort((a, b) => {
-                        const sizeA = parseInt(a.weight.split('-')[0]);
-                        const sizeB = parseInt(b.weight.split('-')[0]);
-                        return sizeA - sizeB;
-                    });
+                    puppies.sort((a, b) => getWeightValue(a.weight) - getWeightValue(b.weight));
                     break;
             }
             renderPuppies();
@@ -989,7 +793,6 @@
             `;
             
             sortedPuppies.forEach((puppy, index) => {
-                const price = typeof puppy.price === 'number' ? '$' + puppy.price : puppy.price;
                 html += `
                     <tr>
                         <td style="padding: 10px; border: 1px solid #ddd;">#${index + 1}</td>
@@ -1002,12 +805,12 @@
                             You: ${puppy.score}/10
                         </td>
                         <td style="padding: 10px; border: 1px solid #ddd;">
-                            <strong>Price:</strong> ${price}<br>
+                            <strong>Price:</strong> $${puppy.price}<br>
                             <strong>Weight:</strong> ${puppy.weight}<br>
                             <strong>Location:</strong> ${puppy.location}<br>
-                            <strong>Key Traits:</strong> ${puppy.keyTraits}
+                            ${puppy.keyTraits ? `<strong>Key Traits:</strong> ${puppy.keyTraits}` : ''}
                         </td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${puppy.notes || 'No notes'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${puppy.userNotes || 'No notes'}</td>
                     </tr>
                 `;
             });
@@ -1039,14 +842,13 @@
         function exportToCSV() {
             const sortedPuppies = [...puppies].sort((a, b) => b.score - a.score);
             
-            let csv = 'Rank,Name,Breed,Your Score,ESA Score,Price,Weight,Location,ESA Qualities,Notes,Link\n';
+            let csv = 'Rank,Name,Breed,Your Score,ESA Score,Price,Weight,Location,Key Traits,Your Notes,Link\n';
             
             sortedPuppies.forEach((puppy, index) => {
-                const price = typeof puppy.price === 'number' ? puppy.price : '"' + puppy.price + '"';
-                const notes = puppy.notes ? '"' + puppy.notes.replace(/"/g, '""') + '"' : '';
-                const qualities = '"' + puppy.c2cMeaning.replace(/"/g, '""') + '"';
+                const keyTraits = puppy.keyTraits ? '"' + puppy.keyTraits.replace(/"/g, '""') + '"' : '';
+                const userNotes = puppy.userNotes ? '"' + puppy.userNotes.replace(/"/g, '""') + '"' : '';
                 
-                csv += `${index + 1},${puppy.name},${puppy.breed},${puppy.score},${puppy.esaScore},${price},"${puppy.weight}","${puppy.location}",${qualities},${notes},"${puppy.link}"\n`;
+                csv += `${index + 1},"${puppy.name}","${puppy.breed}",${puppy.score},${puppy.esaScore},${puppy.price},"${puppy.weight}","${puppy.location}",${keyTraits},${userNotes},"${puppy.link}"\n`;
             });
             
             // Create download
@@ -1059,10 +861,8 @@
             window.URL.revokeObjectURL(url);
         }
         
-        // Initialize with ESA sort
-        loadSavedData();
-        puppies.sort((a, b) => b.esaScore - a.esaScore);
-        renderPuppies();
+        // Initialize the application
+        loadPuppyData();
     </script>
 </body>
 </html>
